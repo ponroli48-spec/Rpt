@@ -1,2 +1,245 @@
-# Rpt
-A
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Risk Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+            color: #d1d5db;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 2rem;
+        }
+        .calculator-card {
+            background-color: #161b22;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+        }
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #a0aec0;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #30363d;
+            background-color: #0d1117;
+            color: #ffffff;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.5);
+        }
+        .result-box {
+            background-color: #21262d;
+            border: 1px solid #30363d;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            text-align: center;
+        }
+        .result-label {
+            font-weight: 500;
+            color: #a0aec0;
+            margin-bottom: 0.5rem;
+        }
+        .result-value {
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+        .value-green {
+            color: #34d399;
+        }
+        .value-red {
+            color: #f87171;
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-200">
+    <div class="container mx-auto p-6 md:p-10">
+        <div class="calculator-card">
+            <h1 class="text-3xl font-bold text-center mb-2">Crypto Trading Calculator</h1>
+            <p class="text-center text-sm text-gray-400 mb-8">Calculate risk, position size, and R/R for your trades.</p>
+
+            <div id="messageBox" class="bg-red-800 text-red-200 p-4 rounded-lg hidden mb-6 transition-all duration-300"></div>
+
+            <div class="input-grid">
+                <div class="input-group">
+                    <label for="balance">Balance (USD)</label>
+                    <input type="number" id="balance" oninput="updateResults()" class="mt-1" placeholder="e.g., 1000" required>
+                </div>
+                <div class="input-group">
+                    <label for="riskPerTrade">Risk per Trade (%)</label>
+                    <input type="number" id="riskPerTrade" oninput="updateResults()" class="mt-1" placeholder="e.g., 1" required>
+                </div>
+                <div class="input-group">
+                    <label for="leverage">Leverage (x)</label>
+                    <input type="number" id="leverage" oninput="updateResults()" class="mt-1" placeholder="e.g., 10" required>
+                </div>
+                <div class="input-group">
+                    <label for="direction">Direction</label>
+                    <select id="direction" onchange="updateResults()" class="mt-1 p-3 rounded-md">
+                        <option value="long">Long</option>
+                        <option value="short">Short</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="entryPrice">Entry Price (USD)</label>
+                    <input type="number" id="entryPrice" oninput="updateResults()" class="mt-1" placeholder="e.g., 20000" required>
+                </div>
+                <div class="input-group">
+                    <label for="stopLossPrice">Stop Loss Price (USD)</label>
+                    <input type="number" id="stopLossPrice" oninput="updateResults()" class="mt-1" placeholder="e.g., 19000" required>
+                </div>
+                <div class="input-group">
+                    <label for="takeProfitPrice">Take Profit Price (USD)</label>
+                    <input type="number" id="takeProfitPrice" oninput="updateResults()" class="mt-1" placeholder="e.g., 22000" required>
+                </div>
+            </div>
+
+            <h2 class="text-2xl font-bold text-center mt-8 mb-4">Calculated Results</h2>
+            <div id="results" class="hidden grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8">
+                <div class="result-box">
+                    <div class="result-label">Leveraged TP ROI / TP ROI</div>
+                    <div id="tpRoi" class="result-value"></div>
+                </div>
+                <div class="result-box">
+                    <div class="result-label">Max Leveraged SL / SL</div>
+                    <div id="slPercent" class="result-value"></div>
+                </div>
+                <div class="result-box">
+                    <div class="result-label">Max Loss</div>
+                    <div id="maxLoss" class="result-value"></div>
+                </div>
+                <div class="result-box">
+                    <div class="result-label">Margin Cost (Estimated)</div>
+                    <div id="maxMargin" class="result-value"></div>
+                </div>
+                <div class="result-box">
+                    <div class="result-label">Order Value</div>
+                    <div id="orderValue" class="result-value"></div>
+                </div>
+                <div class="result-box">
+                    <div class="result-label">Take Profit Amount</div>
+                    <div id="takeProfitAmount" class="result-value"></div>
+                </div>
+                <div class="result-box">
+                    <div class="result-label">Stop Loss Amount</div>
+                    <div id="stopLossAmount" class="result-value"></div>
+                </div>
+                <div class="result-box">
+                    <div class="result-label">Risk/Reward Ratio</div>
+                    <div id="rrRatio" class="result-value"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showMessage(message) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden');
+        }
+
+        function updateResults() {
+            const balance = parseFloat(document.getElementById('balance').value);
+            const riskPerTrade = parseFloat(document.getElementById('riskPerTrade').value);
+            const leverage = parseFloat(document.getElementById('leverage').value);
+            const direction = document.getElementById('direction').value;
+            const entryPrice = parseFloat(document.getElementById('entryPrice').value);
+            const stopLossPrice = parseFloat(document.getElementById('stopLossPrice').value);
+            const takeProfitPrice = parseFloat(document.getElementById('takeProfitPrice').value);
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.classList.add('hidden');
+            document.getElementById('messageBox').classList.add('hidden');
+
+            if (isNaN(balance) || isNaN(riskPerTrade) || isNaN(leverage) || isNaN(entryPrice) || isNaN(stopLossPrice) || isNaN(takeProfitPrice)) {
+                return; // Don't show results until all fields are filled
+            }
+
+            if (balance <= 0 || riskPerTrade <= 0 || leverage <= 0 || entryPrice <= 0 || stopLossPrice <= 0 || takeProfitPrice <= 0) {
+                showMessage("All values must be greater than zero.");
+                return;
+            }
+
+            let slPercent, tpPercent;
+            if (direction === 'long') {
+                if (stopLossPrice >= entryPrice || takeProfitPrice <= entryPrice) {
+                    showMessage("For a LONG position, SL must be lower than Entry and TP must be higher than Entry.");
+                    return;
+                }
+                slPercent = ((entryPrice - stopLossPrice) / entryPrice) * 100;
+                tpPercent = ((takeProfitPrice - entryPrice) / entryPrice) * 100;
+            } else { // short
+                if (stopLossPrice <= entryPrice || takeProfitPrice >= entryPrice) {
+                    showMessage("For a SHORT position, SL must be higher than Entry and TP must be lower than Entry.");
+                    return;
+                }
+                slPercent = ((stopLossPrice - entryPrice) / entryPrice) * 100;
+                tpPercent = ((entryPrice - takeProfitPrice) / entryPrice) * 100;
+            }
+
+            if (slPercent === 0) {
+                showMessage("Entry price cannot be the same as stop loss price.");
+                return;
+            }
+
+            const maxLoss = balance * (riskPerTrade / 100);
+            const orderValue = maxLoss / (slPercent / 100);
+            const marginCost = orderValue / leverage;
+            const rrRatio = (tpPercent / slPercent);
+            
+            const tpRoiWithLeverage = tpPercent * leverage;
+            const slPercentWithLeverage = slPercent * leverage;
+
+            const takeProfitAmount = orderValue * (tpPercent / 100);
+            const stopLossAmount = orderValue * (slPercent / 100);
+
+            document.getElementById('tpRoi').innerHTML = `${tpRoiWithLeverage.toFixed(2)}%<br>${tpPercent.toFixed(2)}%`;
+            document.getElementById('tpRoi').classList.add('value-green');
+            
+            document.getElementById('slPercent').innerHTML = `${slPercentWithLeverage.toFixed(2)}%<br>${slPercent.toFixed(2)}%`;
+            document.getElementById('slPercent').classList.add('value-red');
+
+            document.getElementById('maxLoss').textContent = `${maxLoss.toFixed(2)} USD`;
+            document.getElementById('maxLoss').classList.add('value-red');
+
+            document.getElementById('maxMargin').textContent = `${marginCost.toFixed(2)} USD`;
+            document.getElementById('maxMargin').classList.add('value-green');
+
+            document.getElementById('orderValue').textContent = `${orderValue.toFixed(2)} USD`;
+            document.getElementById('orderValue').classList.add('value-green');
+            
+            document.getElementById('takeProfitAmount').textContent = `${takeProfitAmount.toFixed(2)} USD`;
+            document.getElementById('takeProfitAmount').classList.add('value-green');
+
+            document.getElementById('stopLossAmount').textContent = `${stopLossAmount.toFixed(2)} USD`;
+            document.getElementById('stopLossAmount').classList.add('value-red');
+
+            document.getElementById('rrRatio').textContent = rrRatio.toFixed(2);
+            document.getElementById('rrRatio').classList.add('value-green');
+
+            resultsDiv.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
